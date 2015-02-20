@@ -6,7 +6,7 @@ output: html_document
 ## Introduction
 We analyze a data set of weight-lifting activities, as described [here](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf). The dataset is composed of 160 variables collected on 8 hours of activities on 4 healthy subjects, including the outcome variable classe which has 5 possible factors (sitting-down, standing-up, standing, walking and sitting). We are given a training data-set of 19622 rows and a testing dataset of 20 rows. Using the training data-set, we separate with 70% probability into training and testing subsets. We then run a Random Forests algorithm on the training set, which is able to successfully predict with 100% accuracy on the training set, and over 99% accuracy on the testing set. Finally we run our algorithm on the small test dataset of 20 samples to eventually arrive at our predictions.
 
-```{r echo=FALSE}
+```{r message=FALSE}
 library(caret)
 library(doMC)
 library(randomForest)
@@ -18,11 +18,10 @@ We first load the data into R.
 ```{r}
 training <- read.csv("pml-training.csv", header = TRUE)
 testing <- read.csv("pml-testing.csv", header = TRUE)
-summary(training)
 ```
 
 We process the data-set, removing columns which are full of null or NA values, as well as irrelevant columns like usernames and timestamps. We also set the classe column as a factor variable. We thus reduce the data-set to 52 factor columns and 1 outcome variable, classe.
-```{r}
+```{r message=FALSE, warning=FALSE}
 set.seed(9999)
 dim(training)
 training$classe <- factor(training$classe)
