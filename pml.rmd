@@ -1,0 +1,86 @@
+---
+title: "Predicting Quality of Weight-lifting Activities"
+output: html_document
+---
+
+## Introduction
+We analyze a data set of weight-lifting activities, as described [here](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf). The dataset is composed of 160 variables collected on 8 hours of activities on 4 healthy subjects, including the outcome variable classe which has 5 possible factors (sitting-down, standing-up, standing, walking and sitting). We are given a training data-set of 19622 rows and a testing dataset of 20 rows. Using the training data-set, we separate with 70% probability into training and testing subsets. We then run a Random Forests algorithm on the training set, which is able to successfully predict with 100% accuracy on the training set, and over 99% accuracy on the testing set. Finally we run our algorithm on the small test dataset of 20 samples to eventually arrive at our predictions.
+
+```{r echo=FALSE}
+library(caret)
+library(doMC)
+library(randomForest)
+```
+
+
+## Data Processing 
+We first load the data into R.
+```{r}
+training <- read.csv("pml-training.csv", header = TRUE)
+testing <- read.csv("pml-testing.csv", header = TRUE)
+summary(training)
+```
+
+We process the data-set, removing columns which are full of null or NA values, as well as irrelevant columns like usernames and timestamps. We also set the classe column as a factor variable. We thus reduce the data-set to 52 factor columns and 1 outcome variable, classe.
+```{r}
+set.seed(9999)
+dim(training)
+training$classe <- factor(training$classe)
+levels(training$classe)
+training[,8:159] <- sapply(training[,8:159], as.character)
+training[,8:159] <- sapply(training[,8:159], as.numeric)
+training <- training[,-(1:7)]
+training <- training[,colSums(is.na(training))==0]
+dim(training)
+```
+
+## Methods
+We further split our training data into training and test data. We then apply random forests as a prediction algorithm for the factor variable classe.
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+train <- training[inTrain,]
+test <- training[-inTrain,]
+
+
+registerDoMC(2) #number of cores on the machine
+modFit <- foreach(y=seq(10), .combine=combine ) %dopar% {
+   rf <- randomForest(classe ~ ., train, ntree=50, norm.votes=FALSE)
+}
+```
+
+Using the random forests prediction algorithm modFit, we back-test it on the training data. Our prediction algorithm was 100% accurate.
+
+```{r}
+pred <- predict(modFit, newdata=train[,1:52])
+confusionMatrix(pred, reference=train$classe)
+```
+
+## Results and Conclusions
+
+Testing it on the test data sample we created from the training set, our algorithm still has an over 99% accuracy.
+```{r}
+pred <- predict(modFit, newdata=test)
+confusionMatrix(pred, reference=test$classe)
+```
+
+
+Finally, we apply our algorithm to the original test data set of 20 samples.
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pred_final <- predict(modFit, newdata=testing)
+pred_final
+pml_write_files(pred_final)
+
+```
+
+##References
+
+1. Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6
+
